@@ -1,5 +1,7 @@
 # Community submission text
 
+Status (2026-11-02): the maintainer confirmed the entry was published and the directory reported that automated review was in progress. Approval and in-app installation are not confirmed. The setup text below is retained for reference; do not create a duplicate entry.
+
 Name: Vault Cloud Sync
 
 ID: ob-collector
@@ -14,4 +16,4 @@ Author: Kai
 
 No author-hosted account or service subscription is needed. Users deploy their own Worker, D1 database and private R2 bucket through the included setup wizard. Cloudflare fees are separate and paid by users to Cloudflare. README and PRIVACY.md disclose all network use and storage. The plugin does not include client telemetry or downloaded executable code. It uses Web Crypto and Obsidian requestUrl for mobile-compatible APIs, but physical mobile installation remains to be confirmed before making verified-device claims.
 
-Maintainer action: sign in at https://community.obsidian.md, link GitHub account javakenn, use Add plugin and select this repository. Resolve automated scan findings and reviewer feedback. Do not submit private installation ZIPs or administrator/device credentials.
+Maintainer action: sign in at https://community.obsidian.md, link GitHub account javakenn, use Plugins → New plugin and select this repository. Resolve automated scan findings and reviewer feedback. Do not submit private installation ZIPs or administrator/device credentials.

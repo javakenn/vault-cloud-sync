@@ -13,11 +13,31 @@ Sync an Obsidian vault across desktop, iPhone and Android using **your own Cloud
 - Authenticated ETags to avoid downloading unchanged manifests.
 - A setup wizard that creates your Cloudflare resources and generates private device installation packages.
 
-This is a community project, not the official Obsidian Sync service. The initial plugin interface is in Chinese; these instructions include both English and Chinese. The plugin is **not yet listed in the Community directory**. Manual installation is available below.
+This is a community project, not the official Obsidian Sync service. The plugin interface is currently Chinese. On 2026-11-02 the Community directory entry was published and its automated review was in progress; approval and in-app installation are not yet confirmed. Use the manual instructions below if the plugin cannot be installed through Community plugins.
 
-## Quick start: your own Cloudflare backend
+## Start here: first device, then the others
 
-Requirements: Node.js 22 or newer, a Cloudflare account, and R2 activated in that account. Cloudflare may require a payment method to enable R2; review its current pricing yourself. The wizard does not purchase a paid Workers plan or a domain.
+You need a computer for the initial Cloudflare deployment. Phones only need Obsidian and their own device package/configuration; you do not install Node.js or deploy another backend on each phone.
+
+| What you want to do | Start here |
+| --- | --- |
+| Deploy with your own Cloudflare account | Steps 1–2 below |
+| Create a local Obsidian vault and add the plugin | [Installation walkthrough](docs/INSTALL.md) |
+| Add the plugin to an existing vault | [Existing vault instructions](docs/INSTALL.md#existing-vault) |
+| Connect iPhone or Android | [Mobile installation](docs/INSTALL.md#iphone-and-ipad) |
+| Create a separate cloud vault or another device | [Device and vault management](#manage-devices-and-additional-vaults) |
+| Build the plugin yourself | [Build from source](docs/INSTALL.md#build-the-plugin-from-source) |
+| Read the full Chinese walkthrough | [中文：从零开始使用](docs/README.zh-CN.md) |
+
+### 1. Prepare the computer and Cloudflare
+
+1. Install [Obsidian](https://obsidian.md/download), [Node.js 22+](https://nodejs.org/en/download) and [Git](https://git-scm.com/downloads) on your computer. Use Terminal on macOS/Linux or PowerShell on Windows. Run `node --version`, `npm --version` and `git --version` to confirm all three commands work.
+2. Sign in to your own [Cloudflare dashboard](https://dash.cloudflare.com/). Open **R2 Object Storage** and complete initial activation. The dashboard may request a payment method and billing agreement; review the current terms yourself. The wizard does not buy a paid Workers plan or domain.
+3. Back up your existing notes. Keep the vault you will synchronize outside folders managed by iCloud, OneDrive, Dropbox or another sync engine. On a Mac, a local `Vaults` folder in your home directory is one option; Documents/Desktop may themselves be in iCloud.
+
+### 2. Create your backend and device packages
+
+Run these commands in order, **once on the computer**:
 
 ```sh
 git clone https://github.com/javakenn/vault-cloud-sync.git
@@ -26,52 +46,55 @@ npm ci
 npm run setup:cloudflare
 ```
 
-The wizard opens Cloudflare login if needed, asks for your account when there are multiple accounts, and asks for a **new project name**. It creates a Worker, D1 database and private R2 bucket under that name, applies the schema, generates an administrator secret, deploys the backend, verifies health, and creates separate Mac/iPhone/Android configurations. All network calls go to your selected account and deployed service. It never connects to the author's backend.
+At the prompts:
 
-If R2 is not enabled, activate it in the Cloudflare dashboard and run the wizard again. If a network call fails, run it again from the same directory; progress and the administrator secret are retained in `.data`. An unrelated existing D1 with the same name is rejected. See [recovery details](docs/SELF-HOSTING.md) for partial provisioning.
+1. Complete Cloudflare authorization in the browser opened by Wrangler. Return to the terminal afterward. If it times out, run `npx wrangler login`, complete the new authorization promptly, then rerun the setup command; do not keep refreshing an old localhost callback URL.
+2. Select your own account if several are available.
+3. Enter a new project name, for example `my-vault-sync`. Use 3–48 lowercase letters, digits or hyphens, starting with a letter. This is an infrastructure name, not your local vault name. The default cloud vault ID is `notes`.
+4. Wait for a service URL and three device-package paths. The wizard creates a Worker, D1 database and private R2 bucket, applies migrations, provisions a private administrator secret, verifies the service and creates independent Mac/iPhone/Android tokens. It does not upload your existing notes at this stage.
 
-The generated files are **private**:
+A successful run prints a service URL in this form (example only):
 
-| File | Purpose |
+```text
+https://my-vault-sync.your-account.workers.dev
+```
+
+Open your actual URL in a browser; it is your device-management page. Your service URL and tokens are already included in the generated device JSONs. No author resources or credentials are needed.
+
+All generated files are in the **project folder you just cloned**. `.data` is hidden on many systems; macOS Finder uses `Command+Shift+.` to show hidden files, while Windows Explorer uses **View → Show → Hidden items**. You can also navigate directly to these paths in your file manager:
+
+| File, relative to the project folder | What to do with it |
 | --- | --- |
-| `wrangler.local.jsonc` | Your account/resource bindings; ignored by Git |
-| `.data/admin-secret.json` | Administrator credential; never put this in the plugin |
-| `.data/setup-state.json` | Provisioning progress and service URL |
-| `.data/devices/notes/mac.json` | Mac device connection configuration |
-| `.data/devices/notes/iphone.json` | iPhone device connection configuration |
-| `.data/devices/notes/android.json` | Android device connection configuration |
-| `.data/devices/notes/*-vault.zip` | Empty vault with plugin and the corresponding device credential |
+| `.data/devices/notes/mac-vault.zip` | Start with a new, preconfigured desktop vault |
+| `.data/devices/notes/mac.json` | Connect an existing desktop vault |
+| `.data/devices/notes/iphone-vault.zip` / `iphone.json` | Transfer privately to the iPhone only |
+| `.data/devices/notes/android-vault.zip` / `android.json` | Transfer privately to the Android only |
+| `.data/admin-secret.json` | Administrator credential for the management page; use only its `ADMIN_TOKEN` value |
+| `.data/setup-state.json` | Setup progress and service URL; keep privately |
+| `wrangler.local.jsonc` | Your saved Cloudflare bindings; keep privately |
 
-Keep `.data` backed up privately. Never upload these files to a public issue, repository, or release. The same wizard invocation reuses saved device tokens; it does not silently replace a revoked token.
+Do not copy the administrator JSON into the plugin. Device JSONs and vault ZIPs contain device credentials: never publish them, attach them to issues or upload them as releases. Back up `.data` privately. Rerun the same setup command after a transient failure; see [partial-provisioning recovery](docs/SELF-HOSTING.md#retry-and-recovery) if an existing-resource conflict remains.
 
-## Install and sync
+### 3. Create a local vault and add the plugin
 
-### Desktop: existing vault
+**Try a new vault first:** unzip `mac-vault.zip` into a local folder outside any other sync service. It contains `Cloud Notes`, including a hidden configuration folder. In Obsidian, choose **Open folder as vault**, then select `Cloud Notes` itself. Trust the vault you generated, enable **Vault Cloud Sync** under **Settings → Community plugins**, open its settings, click **连接** under **保存并验证连接**, then enable **启用仓库双向同步** and click **同步** under **立即同步**.
 
-1. Back up the vault. Do not run this alongside another sync engine on the same directory.
-2. From a GitHub Release or `npm run build`, copy `main.js`, `manifest.json`, and `styles.css` into `<vault config folder>/plugins/ob-collector/`. The usual config folder is `.obsidian`, but custom config folders are supported by Obsidian. Do not copy another vault's `data.json` or sync baseline.
-3. Enable **Vault Cloud Sync** in Settings → Community plugins.
-4. In its settings, import the contents of the device's JSON configuration, verify the connection, then enable two-way sync and run sync. Upload the first device completely before connecting the others.
-5. All devices meant to share the same notes must connect to the same cloud vault; independent local vaults need separate cloud vault IDs. Never reuse one device configuration in multiple installations.
+The package already includes the plugin and this device's connection. This is a new empty vault, not a copy of your existing notes.
 
-Alternatively, unzip the generated `mac-vault.zip` into a new local folder and open `Cloud Notes` as a vault. Automatic sync starts disabled.
+**Use an existing vault:** install the three plugin files into that vault and import `mac.json`. See the [exact folder layout, download links and button sequence](docs/INSTALL.md#existing-vault). Obsidian installs plugins **per vault**; installing in another vault does not install it here. Do not copy another vault's `data.json` or sync baseline.
 
-### iPhone/iPad
+### 4. Confirm the first sync before connecting a phone
 
-1. In Obsidian, create a local vault with iCloud storage disabled so Files exposes **On My iPhone → Obsidian**.
-2. Transfer `iphone-vault.zip` privately to the phone and unzip it. Preserve the complete `Cloud Notes` directory, including hidden `.obsidian` files.
-3. Close Obsidian, place the complete directory under **On My iPhone → Obsidian**, and reopen Obsidian to select the vault. Do not replace an existing vault.
-4. Enable the plugin, verify its prefilled connection and enable sync. Keep Obsidian open until the first download finishes. Verify a note and image in both directions before using real notes.
+1. On the computer, create `Sync test.md` with a few lines and add a small image. Run **立即同步**. The plugin should report **仓库云同步 · 已同步**.
+2. After the first device's upload finishes, connect the phone using its own `iphone-vault.zip`/`iphone.json` or `android-vault.zip`/`android.json`. Follow [mobile steps](docs/INSTALL.md#iphone-and-ipad), preserving hidden configuration files.
+3. Keep Obsidian open on the phone, run sync and confirm the note and image appear. Edit one line on the phone, sync, then sync the computer and confirm the edit arrives.
+4. Only after this disposable test succeeds, connect a backed-up real vault. The first connection merges local and remote files; it is not a one-way overwrite. All devices for the same notes must use the same cloud vault ID and different device tokens.
 
-If Files or Obsidian does not recognize the copied local vault, stop rather than replacing existing data. Follow Obsidian's supported vault installation/migration flow; iOS sandboxing can make manual hidden-folder installation device-dependent. Physical mobile installation must still be verified on your device. Once listed, Community directory installation will replace the manual plugin installation steps, but backend configuration remains necessary.
-
-### Android
-
-Transfer `android-vault.zip` privately, unzip into a local folder while preserving `.obsidian`, open that folder as a vault in Obsidian, enable the plugin, verify the connection and enable sync. Grant Obsidian access to that directory. Keep the app open for synchronization.
+Physical mobile installation remains to be verified on your device. If iOS does not recognize a copied local vault, use the supported installation alternatives in the [installation guide](docs/INSTALL.md#iphone-and-ipad) instead of overwriting an existing vault.
 
 ## Manage devices and additional vaults
 
-Open the service URL printed by the wizard. Sign in with the administrator secret from `.data/admin-secret.json` to create and revoke devices. The management page keeps credentials only in page memory; use its sign-out button afterward. Copy only a device configuration to Obsidian.
+Open the service URL printed by the wizard. Open `.data/admin-secret.json` in a text editor and copy **only the value of `ADMIN_TOKEN`**, without the JSON braces, key name or quotes. Paste it into **管理员令牌**, leave **云端仓库 ID** as `notes` (or your chosen ID), and click **连接管理**. Enter a device name and click **生成设备配置**; copy the complete resulting device JSON into that device's plugin settings. The ID may be new: the first device creation registers its access, and the first file commit creates the vault's version record. No manual database editing is needed. The management page keeps credentials only in page memory; use its sign-out button afterward. Copy only a device configuration to Obsidian.
 
 To create another isolated cloud vault with its own device packages:
 
@@ -80,7 +103,13 @@ npm run devices -- --vault work --platform mac --name "Work Mac"
 npm run devices -- --vault work --platform iphone --name "Work iPhone"
 ```
 
+A local vault is an Obsidian folder; a cloud vault ID is its server-side namespace; a device token identifies one installation. Giving two independent local vaults the same cloud ID merges their files. To keep a second vault isolated, create it with a different ID and import its newly generated configuration.
+
 The CLI reserves one saved configuration per vault/platform. For more devices of the same platform, create distinct device tokens through the management webpage. Revoking a device stops future access; it cannot erase files already downloaded to that device.
+
+## Problems during setup or sync
+
+See [Troubleshooting](docs/TROUBLESHOOTING.md) for missing commands, R2 activation, authorization callback errors, hidden files, connection failures, revoked tokens and phones not syncing. When requesting help, include the failing step and error text; remove tokens and private note contents.
 
 ## Data and limitations
 
