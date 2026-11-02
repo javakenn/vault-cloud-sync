@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS ob_vaults (id TEXT PRIMARY KEY, next_rev INTEGER NOT NULL DEFAULT 0, used_bytes INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS ob_devices (id TEXT PRIMARY KEY, vault TEXT NOT NULL, name TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, revoked INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS ob_devices_vault ON ob_devices(vault);
+CREATE TABLE IF NOT EXISTS ob_revisions (vault TEXT NOT NULL, rev INTEGER NOT NULL, path TEXT NOT NULL, hash TEXT, chunks TEXT NOT NULL, size INTEGER NOT NULL, deleted INTEGER NOT NULL, device TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(vault,rev));
+CREATE INDEX IF NOT EXISTS ob_revisions_path ON ob_revisions(vault,path,rev DESC);

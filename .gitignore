@@ -1,0 +1,12 @@
+node_modules/
+.data/
+.wrangler/
+dist/
+public/*.zip
+main.js
+styles.css
+wrangler.local.jsonc
+.env*
+!.env.example
+.dev.vars*
+*.log

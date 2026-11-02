@@ -1,0 +1,10 @@
+{
+  "id": "ob-collector",
+  "name": "Vault Cloud Sync",
+  "version": "0.3.0",
+  "minAppVersion": "1.8.0",
+  "description": "Sync notes and attachments across devices using your own Cloudflare backend, with conflict copies and version recovery.",
+  "author": "Kai",
+  "isDesktopOnly": false,
+  "authorUrl": "https://github.com/javakenn"
+}
