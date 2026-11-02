@@ -1,0 +1,3 @@
+.ob-collector-textarea { width: 100%; min-height: 180px; margin: 12px 0; }
+.ob-collector-status { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ob-collector-danger { color: var(--text-error); }

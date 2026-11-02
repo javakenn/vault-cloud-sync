@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -63,3 +64,10 @@ assert.equal(
 console.log(
   "Release audit passed: sanitized source, generic bindings, version consistency, public assets.",
 );
+
+const tracked = spawnSync("git", ["ls-files", "-z"], { encoding: "utf8" });
+if (tracked.status === 0) {
+  const names = tracked.stdout.split("\0").filter(Boolean);
+  for (const name of names) assert.ok(!/^(?:\.data\/|\.dev\.vars|\.env|wrangler\.local\.jsonc)/.test(name), "Private file tracked: " + name);
+  for (const name of ["plugin/styles.css", "plugin/src/main.ts", "cloudflare/worker.ts", "scripts/build.mjs"]) assert.ok(names.includes(name), "Required source missing from Git: " + name);
+}
